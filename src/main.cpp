@@ -18,7 +18,7 @@ const uint64_t pipeOut = 0xABCDABCD71LL; // NOTE: The address in the Transmitter
 
 extern "C"
 
-uint16_t loopcounter0 = 0;
+    uint16_t loopcounter0 = 0;
 uint16_t loopcounter1 = 0;
 uint16_t blinkcounter = 0;
 uint16_t impulscounter = 0;
@@ -28,6 +28,7 @@ uint8_t savestatus = 0;
 
 uint8_t adresse = 0;
 uint16_t adressmatch = 0;
+uint16_t speed = 0;
 
 Signal data;
 
@@ -36,10 +37,24 @@ Signal data;
 #define CE_PIN 9
 #define CSN_PIN 10
 
+#define ADRESS_EN_PIN D2 // Adresse auf Bus geben
+#define OUT_EN_PIN  A2
+
+#define OUT_PIN A0
+
+#define OSZIA_PIN A6
+#define OSZIB_PIN A7
+
+
+
+
+
+
+
 // instantiate an object for the nRF24L01 transceiver
 RF24 radio(CE_PIN, CSN_PIN);
 
-#define LOOPLED 14
+#define LOOPLED A1
 
 unsigned char char_x = 0;
 unsigned char char_y = 0;
@@ -59,10 +74,52 @@ uint8_t last_cursorzeile = 0;  // letzte zeile des cursors
 uint8_t last_cursorspalte = 0; // letzte colonne des cursors
 
 // put function declarations here:
+void OSZIA_HI(void)
+{
+  digitalWrite(OSZIA_PIN,1);
+}
+
+void OSZIA_LO(void)
+{
+  digitalWrite(OSZIA_PIN,0);
+}
+
+void OSZIA_TOG(void)
+{
+  digitalWrite(OSZIA_PIN,!digitalRead(OSZIA_PIN));
+}
+
+void OSZIB_HI(void)
+{
+  digitalWrite(OSZIB_PIN,1);
+}
+
+void OSZIB_LO(void)
+{
+  digitalWrite(OSZIB_PIN,0);
+}
+
+void OSZIB_TOG(void)
+{
+  digitalWrite(OSZIB_PIN,!digitalRead(OSZIB_PIN));
+}
 
 void setup()
 {
+  pinMode(OSZIA_PIN,OUTPUT);
+  pinMode(OSZIB_PIN,OUTPUT);
+  
+  digitalWrite(OSZIA_PIN,1);
+  digitalWrite(OSZIB_PIN,1);
+  pinMode(ADRESS_EN_PIN,OUTPUT); // Enable Adress-wert
+  digitalWrite(ADRESS_EN_PIN,0); // OFF
+
+  pinMode(OUT_EN_PIN,OUTPUT); // Enable ADC-wert
+  digitalWrite(OUT_EN_PIN,0); // OFF
+
   pinMode(LOOPLED, OUTPUT);
+  //pinMode(OUT_PIN, OUTPUT);
+  analogWriteResolution(12);
   initDisplay();
   setHomeScreen();
 
@@ -103,7 +160,7 @@ void setup()
   }
   ResetData();
 
-
+charh = u8g2.getMaxCharHeight();
   */
 }
 
@@ -117,47 +174,83 @@ void loop()
       adresse |= (1 << i);
     }
   }
-  if (adresse == 1)
+  if(adresse == 7) // Vorbereitung
   {
-    adressmatch++;
+    OSZIB_TOG();
+    analogWrite(DAC, 0xAFF);
+
+
+
   }
-   if (adresse == 2)
+  if (adresse == 8) 
+  {
+    OSZIA_LO();
+    digitalWrite(OUT_EN_PIN,1);
+    digitalWrite(ADRESS_EN_PIN,1);
+
+    
+
+
+    adressmatch++;
+    OSZIA_HI();
+  }
+  else
+  {
+    //analogWrite(DAC, 0x57F);
+    //digitalWrite(OUT_EN_PIN,0); // OUTPUT enable
+  }
+
+  if (adresse == 9)
   {
     paketcounter++;
+    digitalWrite(OUT_EN_PIN,0);
+    digitalWrite(ADRESS_EN_PIN,0);
+    analogWrite(DAC, 0);
   }
 
   loopcounter0++;
-  if (loopcounter0 >=  BLINKRATE)
+  
+  if (loopcounter0 >= BLINKRATE)
   {
-    digitalWrite(LOOPLED, !digitalRead(LOOPLED));
+
+    //digitalWrite(LOOPLED, !digitalRead(LOOPLED));
     loopcounter0 = 0;
 
-    impulscounter += 16;
-
+    impulscounter += 1;
+    
     // Display 0.96
     loopcounter1++;
     uint8_t charindex = loopcounter1 & 0x7F;
     // u8g2.setDrawColor(0);
-    charh = u8g2.getMaxCharHeight();
-
-   
+    
+    blinkcounter++;
+      speed = blinkcounter;
+      //speed >>= 4; 
+     // Serial.print("speed: ");
+     // Serial.println(speed);
+      //analogWrite(DAC, (speed));
     if (loopcounter1 > 10)
     {
-       if (curr_screen == 0)
-    {
-      updateHomeScreen();
-      u8g2.sendBuffer();
-    }
-      blinkcounter++;
+      //OSZIB_LO();
+      if (curr_screen == 0)
+      {
+        updateHomeScreen();
+        u8g2.sendBuffer();
+       
+      }
+       //OSZIB_HI();
+      
+      //Serial.print("\t");
       loopcounter1 = 0;
+      
       digitalWrite(LOOPLED, !digitalRead(LOOPLED));
-      Serial.print("Byte-Wert: ");
+      //Serial.print("Byte-Wert: ");
       for (int b = 7; b >= 0; b--)
       {
-        Serial.print((adresse >> b) & 1);
+        //Serial.print((adresse >> b) & 1);
       }
-      Serial.println();
+      //Serial.println();
+      
     }
-
   } // if loopcounter
 }
