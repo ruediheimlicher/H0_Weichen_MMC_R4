@@ -11,6 +11,9 @@
 
 #define BLINKRATE 0x0FFF
 
+#define ADRESSE_START   1
+#define ADRESSE_END      2
+
 #define HOMESCREEN      0
 #define MODELLSCREEN    1 // SYMPEL, TROTTLE ...
 #define FUNKTIONSCREEN  2 // YAW,PITCH ...
@@ -92,7 +95,29 @@ static unsigned char pfeil_r[] =
 };
 */
 
-
+/*
+Arduino pin	RA4M1 port
+D0	P301
+D1	P302
+D2	P105
+D3	P104
+D4	P103
+D5	P102
+D6	P106
+D7	P107
+D8	P304
+D9	P303
+D10	P112
+D11	P109
+D12	P110
+D13	P111
+A0	P014
+A1	P000
+A2	P001
+A3	P002
+A4	P101
+A5	P100
+*/
 
    #define arrow_left_width 8
 #define arrow_left_height 8

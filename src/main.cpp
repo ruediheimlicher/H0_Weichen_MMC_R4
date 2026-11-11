@@ -1,5 +1,5 @@
 #include <Arduino.h>
-
+#include "bsp_api.h"
 // von RC_nRF_FS_every
 
 #include "main.h"
@@ -30,6 +30,8 @@ uint8_t adresse = 0;
 uint16_t adressmatch = 0;
 uint16_t speed = 0;
 
+uint8_t taskstatus = 0;
+
 Signal data;
 
 #define TEST 0
@@ -38,18 +40,12 @@ Signal data;
 #define CSN_PIN 10
 
 #define ADRESS_EN_PIN D2 // Adresse auf Bus geben
-#define OUT_EN_PIN  A2
+#define OUT_EN_PIN A2
 
 #define OUT_PIN A0
 
 #define OSZIA_PIN A6
 #define OSZIB_PIN A7
-
-
-
-
-
-
 
 // instantiate an object for the nRF24L01 transceiver
 RF24 radio(CE_PIN, CSN_PIN);
@@ -76,49 +72,49 @@ uint8_t last_cursorspalte = 0; // letzte colonne des cursors
 // put function declarations here:
 void OSZIA_HI(void)
 {
-  digitalWrite(OSZIA_PIN,1);
+  digitalWrite(OSZIA_PIN, 1);
 }
 
 void OSZIA_LO(void)
 {
-  digitalWrite(OSZIA_PIN,0);
+  digitalWrite(OSZIA_PIN, 0);
 }
 
 void OSZIA_TOG(void)
 {
-  digitalWrite(OSZIA_PIN,!digitalRead(OSZIA_PIN));
+  digitalWrite(OSZIA_PIN, !digitalRead(OSZIA_PIN));
 }
 
 void OSZIB_HI(void)
 {
-  digitalWrite(OSZIB_PIN,1);
+  digitalWrite(OSZIB_PIN, 1);
 }
 
 void OSZIB_LO(void)
 {
-  digitalWrite(OSZIB_PIN,0);
+  digitalWrite(OSZIB_PIN, 0);
 }
 
 void OSZIB_TOG(void)
 {
-  digitalWrite(OSZIB_PIN,!digitalRead(OSZIB_PIN));
+  digitalWrite(OSZIB_PIN, !digitalRead(OSZIB_PIN));
 }
 
 void setup()
 {
-  pinMode(OSZIA_PIN,OUTPUT);
-  pinMode(OSZIB_PIN,OUTPUT);
-  
-  digitalWrite(OSZIA_PIN,1);
-  digitalWrite(OSZIB_PIN,1);
-  pinMode(ADRESS_EN_PIN,OUTPUT); // Enable Adress-wert
-  digitalWrite(ADRESS_EN_PIN,0); // OFF
+  pinMode(OSZIA_PIN, OUTPUT);
+  pinMode(OSZIB_PIN, OUTPUT);
 
-  pinMode(OUT_EN_PIN,OUTPUT); // Enable ADC-wert
-  digitalWrite(OUT_EN_PIN,0); // OFF
+  digitalWrite(OSZIA_PIN, 1);
+  digitalWrite(OSZIB_PIN, 1);
+  pinMode(ADRESS_EN_PIN, OUTPUT); // Enable Adress-wert
+  digitalWrite(ADRESS_EN_PIN, 0); // OFF
+
+  pinMode(OUT_EN_PIN, OUTPUT); // Enable ADC-wert
+  digitalWrite(OUT_EN_PIN, 0); // OFF
 
   pinMode(LOOPLED, OUTPUT);
-  //pinMode(OUT_PIN, OUTPUT);
+  // pinMode(OUT_PIN, OUTPUT);
   analogWriteResolution(12);
   initDisplay();
   setHomeScreen();
@@ -167,6 +163,7 @@ charh = u8g2.getMaxCharHeight();
 void loop()
 {
   adresse = 0;
+  /*
   for (int i = 0; i <= 3; i++)
   {
     if (digitalRead(3 + i) == HIGH)
@@ -174,83 +171,105 @@ void loop()
       adresse |= (1 << i);
     }
   }
-  if(adresse == 7) // Vorbereitung
+*/
+  adresse = (R_PORT1->PIDR >> 3) & 0x0F;
+
+  if (adresse == 7) // Vorbereitung
   {
-    OSZIB_TOG();
-    analogWrite(DAC, 0xAFF);
-
-
-
+    // OSZIB_TOG();
+    analogWrite(DAC, 0x8FF);
   }
-  if (adresse == 8) 
+
+  if (adresse == 8)
   {
-    OSZIA_LO();
-    digitalWrite(OUT_EN_PIN,1);
-    digitalWrite(ADRESS_EN_PIN,1);
+    //if (!(taskstatus & (1 << ADRESSE_START)))
+    {
+       OSZIA_LO();
+       digitalWrite(ADRESS_EN_PIN,1);
+       digitalWrite(OUT_EN_PIN,1);
+       /*
+      // D2 P105
+      R_PORT1->PODR |= (1 << 5); // P105 ADRESS_EN_PIN D2
+      // 
+      R_PORT0->PODR |= (1 << 5); // P001 OUT_EN_PIN A2
+      */                    // digitalWrite(OUT_EN_PIN,1);
+      taskstatus |= (1 << ADRESSE_START);
+      taskstatus &= ~(1 << ADRESSE_END);
+    }
 
-    
-
+   
 
     adressmatch++;
-    OSZIA_HI();
-  }
-  else
-  {
-    //analogWrite(DAC, 0x57F);
-    //digitalWrite(OUT_EN_PIN,0); // OUTPUT enable
+    
   }
 
   if (adresse == 9)
   {
     paketcounter++;
-    digitalWrite(OUT_EN_PIN,0);
-    digitalWrite(ADRESS_EN_PIN,0);
-    analogWrite(DAC, 0);
+    //if ((taskstatus & (1 << ADRESSE_START)))
+    {
+       
+       /*
+      R_PORT0->PODR &= ~(1 << 5); // P001 OUT_EN_PIN A2 LOW
+                                  // digitalWrite(OUT_EN_PIN,1);
+
+      // D2 P105
+      R_PORT1->PODR &= ~(1 << 5); // P105 ADRESS_EN_PIN D2 LOW
+      */
+       digitalWrite(ADRESS_EN_PIN,0);
+       digitalWrite(OUT_EN_PIN,0);
+
+      analogWrite(DAC, 0);
+      OSZIA_HI();
+    }
+  }
+  else
+  {
+    // digitalWrite(ADRESS_EN_PIN,0);
   }
 
   loopcounter0++;
-  
+
   if (loopcounter0 >= BLINKRATE)
   {
 
-    //digitalWrite(LOOPLED, !digitalRead(LOOPLED));
+     //digitalWrite(LOOPLED, !digitalRead(LOOPLED));
     loopcounter0 = 0;
 
     impulscounter += 1;
-    
+
     // Display 0.96
     loopcounter1++;
     uint8_t charindex = loopcounter1 & 0x7F;
     // u8g2.setDrawColor(0);
-    
+
     blinkcounter++;
-      speed = blinkcounter;
-      //speed >>= 4; 
-     // Serial.print("speed: ");
-     // Serial.println(speed);
-      //analogWrite(DAC, (speed));
+    speed = blinkcounter;
+    // speed >>= 4;
+    // Serial.print("adresse: ");
+    // Serial.println(adresse);
+    // analogWrite(DAC, (speed));
     if (loopcounter1 > 10)
     {
-      //OSZIB_LO();
+      // OSZIB_LO();
       if (curr_screen == 0)
       {
-        updateHomeScreen();
-        u8g2.sendBuffer();
-       
+        // updateHomeScreen();
+        // u8g2.sendBuffer();
       }
-       //OSZIB_HI();
-      
-      //Serial.print("\t");
+      // OSZIB_HI();
+
+      // Serial.print("\t");
       loopcounter1 = 0;
-      
+
+      //R_PORT0->PODR = ~(1 << 0);
       digitalWrite(LOOPLED, !digitalRead(LOOPLED));
-      //Serial.print("Byte-Wert: ");
+      // Serial.print("Byte-Wert: ");
       for (int b = 7; b >= 0; b--)
       {
-        //Serial.print((adresse >> b) & 1);
+        // Serial.print((adresse >> b) & 1);
       }
-      //Serial.println();
-      
+      // Serial.println();
     }
   } // if loopcounter
 }
