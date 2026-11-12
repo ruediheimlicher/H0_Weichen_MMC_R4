@@ -11,6 +11,10 @@
 
 #define BLINKRATE 0x0FFF
 
+#define ADRESSE_START   1
+#define ADRESSE_END      2
+
+
 #define HOMESCREEN      0
 #define MODELLSCREEN    1 // SYMPEL, TROTTLE ...
 #define FUNKTIONSCREEN  2 // YAW,PITCH ...
