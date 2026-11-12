@@ -177,7 +177,7 @@ void loop()
   if(adresse == 7) // Vorbereitung
   {
     OSZIB_TOG();
-    analogWrite(DAC, 0xAFF);
+    analogWrite(DAC,  speed);
 
 
 
@@ -188,24 +188,17 @@ void loop()
     digitalWrite(OUT_EN_PIN,1);
     digitalWrite(ADRESS_EN_PIN,1);
 
-    
-
-
     adressmatch++;
     OSZIA_HI();
   }
-  else
-  {
-    //analogWrite(DAC, 0x57F);
-    //digitalWrite(OUT_EN_PIN,0); // OUTPUT enable
-  }
+  
 
   if (adresse == 9)
   {
     paketcounter++;
     digitalWrite(OUT_EN_PIN,0);
     digitalWrite(ADRESS_EN_PIN,0);
-    analogWrite(DAC, 0);
+    //analogWrite(DAC, 0);
   }
 
   loopcounter0++;
@@ -223,19 +216,24 @@ void loop()
     uint8_t charindex = loopcounter1 & 0x7F;
     // u8g2.setDrawColor(0);
     
-    blinkcounter++;
-      speed = blinkcounter;
+   
       //speed >>= 4; 
      // Serial.print("speed: ");
      // Serial.println(speed);
       //analogWrite(DAC, (speed));
     if (loopcounter1 > 10)
     {
+       blinkcounter+= 255;
+      speed = blinkcounter & 0xFFF;
+      if(blinkcounter > 4000)
+      {
+        blinkcounter = 0;
+      }
       //OSZIB_LO();
       if (curr_screen == 0)
       {
-        updateHomeScreen();
-        u8g2.sendBuffer();
+        //updateHomeScreen();
+        //u8g2.sendBuffer();
        
       }
        //OSZIB_HI();
@@ -245,7 +243,7 @@ void loop()
       
       digitalWrite(LOOPLED, !digitalRead(LOOPLED));
       //Serial.print("Byte-Wert: ");
-      for (int b = 7; b >= 0; b--)
+      //for (int b = 7; b >= 0; b--)
       {
         //Serial.print((adresse >> b) & 1);
       }
