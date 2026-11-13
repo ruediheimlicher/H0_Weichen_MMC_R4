@@ -85,7 +85,7 @@ elapsedMillis sincelastweiche[ANZWWEICHEN];
 #define SET_B_D_BIT 2 // 1
 
 MCP23S17 mcp1(&SPI, SPI_MCP_CS, 0); // A2=GND, A1=GND, A0=GND
-MCP23S17 mcp2(&SPI, SPI_MCP_CS, 1); // A2=GND, A1=GND, A0=VDD
+MCP23S17 mcp2(&SPI, SPI_MCP_CS, 2); // A2=GND, A1=GND, A0=VDD
 
 uint8_t regA = 0x0;
 uint8_t regB = 0;
@@ -322,6 +322,15 @@ void OSZIB_TOG(void)
 {
   digitalWrite(OSZIB_PIN, !digitalRead(OSZIB_PIN));
 }
+void poptask(void)
+{
+  weichendata w;
+  int erfolg = rb_pop(&weichenringbuffer, &w);
+  if (erfolg == 0) // Weiche vorhanden
+  {
+
+  }
+}
 
 void setup()
 {
@@ -350,21 +359,22 @@ void setup()
     pinMode(pin, INPUT);
   }
 
-  pinMode(SPI_MCP_CS,OUTPUT);
-  digitalWrite(SPI_MCP_CS,HIGH);
+  pinMode(SPI_MCP_CS, OUTPUT);
+  digitalWrite(SPI_MCP_CS, HIGH);
 
   mcp1.begin();
-  #define CHECK 15
-  #define BLINK 0
-  //mcp1.pinMode(CHECK, OUTPUT);
-  //mcp1.pinMode(BLINK, OUTPUT);
-  // 11001100
-  // mcp1.gpioPort(0xFFFF); // alle HI
-  mcp1.writePort(0,0x00); // alle LO, Gerade
-  mcp1.writePort(1,0x00); // alle LO, Gerade
+#define CHECK 15
+#define BLINK 0
+  // mcp1.pinMode(CHECK, OUTPUT);
+  // mcp1.pinMode(BLINK, OUTPUT);
+  //  11001100
+  //  mcp1.gpioPort(0xFFFF); // alle HI
+  mcp1.writePort(0, 0xCC); // alle LO, Gerade
+  mcp1.writePort(1, 0x33); // alle LO, Gerade
 
   mcp2.begin();
-  mcp2.writePort(0,0x00); // alle LO, Gerade
+  mcp2.writePort(0, 0xCC); // alle LO, Gerade
+  mcp2.writePort(1, 0x33); // alle LO, Gerade
 
   /*
 //                Configure the NRF24 module  | NRF24 modül konfigürasyonu
@@ -476,28 +486,25 @@ void loop()
       weichentastencodeC = mcp1.readPort(0);
       weichentastencodeD = mcp1.readPort(1);
 
-      u8g2.setCursor(0,30);
+      u8g2.setCursor(0, 30);
       u8g2.print(weichentastencodeC);
 
-      //mcp1.writePort(0,weichentastencodeC); 
-      u8g2.setCursor(50,30);
+      u8g2.setCursor(50, 30);
       u8g2.print(weichentastencodeD);
-   
+
       weichentastencodeE = mcp2.readPort(0);
       weichentastencodeF = mcp2.readPort(1);
 
-      u8g2.setCursor(0,60);
+      u8g2.setCursor(0, 60);
       u8g2.print(weichentastencodeE);
 
-      //mcp1.writePort(0,weichentastencodeC); 
-      u8g2.setCursor(50,60);
+      // mcp1.writePort(0,weichentastencodeC);
+      u8g2.setCursor(50, 60);
       u8g2.print(weichentastencodeF);
-
-
 
       blinkcounter += 255;
       speed = blinkcounter & 0xFFF;
-      u8g2.setCursor(100,30);
+      u8g2.setCursor(100, 30);
       u8g2.print(speed);
       if (blinkcounter > 4000)
       {
