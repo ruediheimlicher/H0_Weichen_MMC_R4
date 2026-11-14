@@ -11,9 +11,11 @@
 
 #define BLINKRATE 0x0FFF
 
+#define DISPLAY 1
+
 #define ADRESSE_START   1
 #define ADRESSE_END      2
-
+#define MCP_START       3
 
 #define HOMESCREEN      0
 #define MODELLSCREEN    1 // SYMPEL, TROTTLE ...

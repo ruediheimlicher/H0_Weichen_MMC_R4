@@ -328,8 +328,16 @@ void poptask(void)
   int erfolg = rb_pop(&weichenringbuffer, &w);
   if (erfolg == 0) // Weiche vorhanden
   {
-
+    u8g2.setCursor(64, 48);
+    u8g2.print(w.weiche);
+    u8g2.print(w.richtung);
   }
+  else
+  {
+    u8g2.setCursor(64, 48);
+    u8g2.print("X");
+  }
+  u8g2.sendBuffer();
 }
 
 void setup()
@@ -429,6 +437,10 @@ void loop()
   adresse |= ((pins >> 2) & 1) << 2; // D5
   adresse |= ((pins >> 6) & 1) << 3; // D6
 
+  if (adresse == 0)
+  {
+    taskstatus &= ~(1 << MCP_START);
+  }
   if (adresse == 7) // Vorbereitung
   {
     //
@@ -461,6 +473,200 @@ void loop()
     taskstatus &= ~(1 << ADRESSE_START);
   }
 
+  if (adresse == 9)
+  {
+    if (!(taskstatus & (1 << MCP_START)))
+    {
+      taskstatus |= (1 << MCP_START);
+      weichentastencodeC = mcp1.readPort(0);
+      weichentastencodeD = mcp1.readPort(1);
+      weichentastencodeE = mcp2.readPort(0);
+      weichentastencodeF = mcp2.readPort(1);
+    }
+    weichenposition[GRUPPE_0] = 0;
+    weichentastencodeC = mcp1.readPort(0);
+    weichenxor0 = weichentastencodeC ^ oldweichentastencodeC;
+
+    if (weichenxor0)
+    {
+      weichenXORcounterA++;
+      // Weiche 2 Position 0
+      if ((weichentastencodeC & (1 << SET_A_A_BIT)) == 0) // 6   Taste A  gedrueckt , weiche2
+      {
+        // u8g2.setCursor(8, 48);
+        // u8g2.print("C A_A");
+        if (sincelastweiche[2] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("C A_A");
+          mcp1.writePort(OUT_A_A, HIGH);          // GPA7
+          weichenposition[GRUPPE_0] &= ~(1 << 2); // bit fuer weiche loeschen
+          weichendata wC = {.weiche = 2, .richtung = 1};
+          rb_push(&weichenringbuffer, wC);
+          uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
+          sincelastweiche[2] = 0;
+          u8g2.setCursor(8, 48);
+          // u8g2.print("C            ");
+        }
+      }
+      else
+      {
+        // u8g2.setCursor(8, 48);
+        // u8g2.print("C            ");
+      }
+
+      if ((weichentastencodeC & (1 << SET_A_B_BIT)) == 0) //  3    Taste B gedrueckt weiche2
+      {
+        // u8g2.setCursor(8, 48);
+        // u8g2.print("C A_B");
+        if (sincelastweiche[2] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("C A_B");
+          mcp1.writePort(OUT_A_A, LOW);          //
+          weichenposition[GRUPPE_0] |= (1 << 2); // bit fur weiche setzen
+          weichendata wC = {.weiche = 2, .richtung = 0};
+          rb_push(&weichenringbuffer, wC);
+          uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
+          sincelastweiche[2] = 0;
+          // u8g2.setCursor(8, 48);
+          // u8g2.print("C            ");
+        }
+      }
+      else
+      {
+        // u8g2.setCursor(8, 48);
+        // u8g2.print("C            ");
+      }
+
+      // Weiche B Position 1
+      if ((weichentastencodeC & (1 << SET_A_C_BIT)) == 0) //  7    Taste 3 gedrueckt , weiche1
+      {
+        if (sincelastweiche[3] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("C A_C");
+          mcp1.writePort(OUT_A_B, HIGH); // GPA7
+          weichenposition[GRUPPE_0] &= ~(1 << 3);
+          weichendata wC = {.weiche = 3, .richtung = 1};
+          uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
+          rb_push(&weichenringbuffer, wC);
+          sincelastweiche[3] = 0;
+          u8g2.setCursor(8, 48);
+          // u8g2.print("C            ");
+        }
+      }
+
+      if ((weichentastencodeC & (1 << SET_A_D_BIT)) == 0) // 2    Taste 2 gedrueckt weiche1
+      {
+        if (sincelastweiche[3] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("C A_D");
+
+          mcp1.writePort(OUT_A_B, LOW); //
+          weichenposition[GRUPPE_0] |= (1 << 3);
+          weichendata wC = {.weiche = 3, .richtung = 0};
+          uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
+          rb_push(&weichenringbuffer, wC);
+          sincelastweiche[3] = 0;
+        }
+      }
+      oldweichentastencodeC = weichentastencodeC;
+    } // if weichenxor0
+
+    // weichendata wD;                                   // data in ringbuffer
+    weichentastencodeD = mcp1.readPort(1) & 0xFE; // Blink exkl.
+    weichenxor1 = weichentastencodeD ^ oldweichentastencodeD;
+    if (weichenxor1) // neue Daten
+    {
+      weichenXORcounterB++;
+      // Weiche 0 Position 2
+      if ((weichentastencodeD & (1 << SET_B_A_BIT)) == 0) // Taste 6 gedrueckt
+      {
+        if (sincelastweiche[0] > 100)
+        {
+          weichenposition[GRUPPE_0] &= ~(1 << 0); // bit fuer weiche loeschen
+          u8g2.setCursor(8, 48);
+          u8g2.print("D B_A");
+          mcp1.writePort(OUT_B_A, HIGH); // GPB7
+          weichendata wD = {.weiche = 0, .richtung = 1};
+          rb_push(&weichenringbuffer, wD);
+          uint8_t eepromdata = (wD.weiche << 4) | wD.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wD.weiche,(eepromdata));
+          sincelastweiche[0] = 0;
+          // taste = 'G';
+        }
+      }
+
+      if ((weichentastencodeD & (1 << SET_B_B_BIT)) == 0) // Taste  gedrueckt
+      {
+        if (sincelastweiche[0] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("D B_B");
+          weichenposition[GRUPPE_0] |= (1 << 0); // bit fur weiche setzen
+          mcp1.writePort(OUT_B_A, LOW);          //
+          weichendata wD = {.weiche = 0, .richtung = 0};
+          rb_push(&weichenringbuffer, wD);
+          uint8_t eepromdata = (wD.weiche << 4) | wD.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wD.weiche,(eepromdata));
+          sincelastweiche[0] = 0;
+          // taste = 'A';
+        }
+      }
+
+      // Weiche 1 Position 1
+      if ((weichentastencodeD & (1 << SET_B_C_BIT)) == 0) // Taste 3 gedrueckt , weiche3
+      {
+        if (sincelastweiche[1] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("D B_C");
+          weichenposition[GRUPPE_0] &= ~(1 << 1); // bit fuer weiche loeschen
+          mcp1.writePort(OUT_B_B, HIGH);          // GPA7
+          weichendata wD = {.weiche = 1, .richtung = 1};
+          rb_push(&weichenringbuffer, wD);
+          uint8_t eepromdata = (wD.weiche << 4) | wD.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wD.weiche,(eepromdata));
+          sincelastweiche[1] = 0;
+        }
+      }
+
+      if ((weichentastencodeD & (1 << SET_B_D_BIT)) == 0) // Taste 2 gedrueckt weiche3
+      {
+        if (sincelastweiche[1] > 100)
+        {
+          u8g2.setCursor(8, 48);
+          u8g2.print("D B_D");
+          weichenposition[GRUPPE_0] |= (1 << 1); // bit fur weiche setzen
+          mcp1.writePort(OUT_B_B, LOW);          //
+          weichendata wD = {.weiche = 1, .richtung = 0};
+          rb_push(&weichenringbuffer, wD);
+          uint8_t eepromdata = (wD.weiche << 4) | wD.richtung;
+          // EEPROM.update(EEPROM_WEICHESTART + wD.weiche,(eepromdata));
+          sincelastweiche[1] = 0;
+        }
+      }
+
+      oldweichentastencodeD = weichentastencodeD;
+      // mcp1.gpioDigitalWrite(OUT_B_A, 1);
+
+    } // if(weichentastencodeD ^
+
+    u8g2.sendBuffer();
+
+    if (rb_count(&weichenringbuffer))
+    {
+      poptask();
+    }
+
+  } // adresse == 0
+
   loopcounter0++;
 
   if (loopcounter0 >= BLINKRATE)
@@ -483,29 +689,27 @@ void loop()
 
     if (loopcounter1 > 10)
     {
-      weichentastencodeC = mcp1.readPort(0);
-      weichentastencodeD = mcp1.readPort(1);
+      if (DISPLAY)
+      {
 
-      u8g2.setCursor(0, 30);
-      u8g2.print(weichentastencodeC);
+        u8g2.setCursor(0, 12);
+        u8g2.print(weichentastencodeC);
 
-      u8g2.setCursor(50, 30);
-      u8g2.print(weichentastencodeD);
+        u8g2.setCursor(50, 12);
+        u8g2.print(weichentastencodeD);
 
-      weichentastencodeE = mcp2.readPort(0);
-      weichentastencodeF = mcp2.readPort(1);
+        u8g2.setCursor(0, 30);
+        u8g2.print(weichentastencodeE);
 
-      u8g2.setCursor(0, 60);
-      u8g2.print(weichentastencodeE);
+        u8g2.setCursor(50, 30);
+        u8g2.print(weichentastencodeF);
 
-      // mcp1.writePort(0,weichentastencodeC);
-      u8g2.setCursor(50, 60);
-      u8g2.print(weichentastencodeF);
+        u8g2.setCursor(100, 12);
+        u8g2.print(speed);
+      }
 
       blinkcounter += 255;
       speed = blinkcounter & 0xFFF;
-      u8g2.setCursor(100, 30);
-      u8g2.print(speed);
       if (blinkcounter > 4000)
       {
         blinkcounter = 0;
