@@ -390,7 +390,7 @@ void setup()
  // mcp1.pinMode(6, OUTPUT);
  // mcp1.pinMode(7, OUTPUT);
 
-  mcp1.writePort(0, 33); // alle LO, Gerade
+  //mcp1.writePort(0, 33); // alle LO, Gerade
 
   // GPB2, GPB3, GPB6, GPB7 as INPUT
   mcp1.pinMode(10, INPUT);
@@ -407,10 +407,28 @@ void setup()
  // mcp1.pinMode(15, OUTPUT);
 
   mcp1.writePort(1, 0xCC); // alle LO, Gerade
+  mcp1.writePort(0, 33); // alle LO, Gerade
+
 
   mcp2.begin();
-  mcp2.writePort(0, 0xCC); // alle LO, Gerade
-  mcp2.writePort(1, 0x33); // alle LO, Gerade
+  // GPA0, GPA1, GPA4, GPA5 as INPUT
+  mcp2.pinMode(0, INPUT);
+  mcp2.pinMode(1, INPUT);
+  mcp2.pinMode(4, INPUT);
+  mcp2.pinMode(5, INPUT);
+
+  // GPA2, GPA3 as OUTPUT
+  mcp2.pinMode(2, OUTPUT);
+  mcp2.pinMode(3, OUTPUT);
+
+  // aux
+ // mcp2.pinMode(6, OUTPUT);
+ // mcp2.pinMode(7, OUTPUT);
+
+
+
+  mcp2.writePort(1, 0xCC); // alle LO, Gerade
+  mcp2.writePort(0, 0x33); // alle LO, Gerade
 
   /*
 //                Configure the NRF24 module  | NRF24 modül konfigürasyonu
@@ -676,6 +694,7 @@ void loop()
     if (weichenxor2) // neue Daten
     {
       weichenXORcounterC++;
+
       // Weiche 6 Position 4
       if (((weichentastencodeE & (1 << SET_A_A_BIT)) == 0)) // Taste 3 gedrueckt
       {
@@ -718,7 +737,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_C");
-          mcp2.digitalWrite(2, HIGH);         // GPA7
+          mcp2.digitalWrite(3, HIGH);         // GPA7
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 7, .richtung = 1};
@@ -735,7 +754,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_D");
-          mcp2.digitalWrite(2, LOW);          //
+          mcp2.digitalWrite(3, LOW);          //
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 7, .richtung = 0};
