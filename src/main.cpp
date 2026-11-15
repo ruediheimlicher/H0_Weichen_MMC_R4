@@ -668,7 +668,7 @@ void loop()
 
     } // if(weichentastencodeD ^
 
-    /*
+    
     // weichendata wE;                            // data in ringbuffer
     weichentastencodeE = mcp2.readPort(0); //& 0x7F;
 
@@ -683,7 +683,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_A");
-          //mcp2.writePort(OUT_A_A, HIGH);          //
+          mcp2.digitalWrite(2, HIGH);         //
           weichenposition[GRUPPE_0] &= ~(1 << 6); // bit fuer weiche loeschen
 
           weichendata wE = {.weiche = 6, .richtung = 1};
@@ -700,7 +700,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_B");
-          //mcp2.writePort(OUT_A_A, LOW);          //
+          mcp2.digitalWrite(2, LOW);       //
           weichenposition[GRUPPE_0] |= (1 << 6); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 6, .richtung = 0};
@@ -710,7 +710,7 @@ void loop()
           sincelastweiche[6] = 0;
         }
       }
-
+      
       // Weiche 7 Position 5
       if ((weichentastencodeE & (1 << SET_A_C_BIT)) == 0) // Taste 5 gedrueckt , weiche1
       {
@@ -718,7 +718,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_C");
-          //mcp2.writePort(OUT_A_B, HIGH);         // GPA7
+          mcp2.digitalWrite(2, HIGH);         // GPA7
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 7, .richtung = 1};
@@ -735,7 +735,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_D");
-          //mcp2.writePort(OUT_A_B, LOW);          //
+          mcp2.digitalWrite(2, LOW);          //
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 7, .richtung = 0};
@@ -745,12 +745,12 @@ void loop()
           sincelastweiche[7] = 0;
         }
       }
-
+      
       oldweichentastencodeE = weichentastencodeE;
     } // if(weichentastencodeDE ^
 
     // weichendata wF;                            // data in ringbuffer
-
+    /*
     weichentastencodeF = mcp2.readPort(1); //& 0xFE;
     weichenxor3 = weichentastencodeF ^ oldweichentastencodeF;
     if ((weichenxor3)) // neue Daten
