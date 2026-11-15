@@ -387,8 +387,8 @@ void setup()
   mcp1.pinMode(3, OUTPUT);
 
   // aux
- // mcp1.pinMode(6, OUTPUT);
- // mcp1.pinMode(7, OUTPUT);
+  // mcp1.pinMode(6, OUTPUT);
+  // mcp1.pinMode(7, OUTPUT);
 
   mcp1.writePort(0, 33); // alle LO, Gerade
 
@@ -403,12 +403,40 @@ void setup()
   mcp1.pinMode(13, OUTPUT);
 
   // aux
- // mcp1.pinMode(14, OUTPUT);
- // mcp1.pinMode(15, OUTPUT);
+  // mcp1.pinMode(14, OUTPUT);
+  // mcp1.pinMode(15, OUTPUT);
 
   mcp1.writePort(1, 0xCC); // alle LO, Gerade
 
   mcp2.begin();
+
+  mcp2.pinMode(0, INPUT);
+  mcp2.pinMode(1, INPUT);
+  mcp2.pinMode(4, INPUT);
+  mcp2.pinMode(5, INPUT);
+
+  // GPA2, GPA3 as OUTPUT
+  mcp2.pinMode(2, OUTPUT);
+  mcp2.pinMode(3, OUTPUT);
+
+  // aux
+  // mcp2.pinMode(6, OUTPUT);
+  // mcp2.pinMode(7, OUTPUT);
+
+  // GPB2, GPB3, GPB6, GPB7 as INPUT
+  mcp2.pinMode(10, INPUT);
+  mcp2.pinMode(11, INPUT);
+  mcp2.pinMode(14, INPUT);
+  mcp2.pinMode(15, INPUT);
+
+  // GPB4, GPB5 as OUTPUT
+  mcp2.pinMode(12, OUTPUT);
+  mcp2.pinMode(13, OUTPUT);
+
+  // aux
+  // mcp2.pinMode(14, OUTPUT);
+  // mcp2.pinMode(15, OUTPUT);
+
   mcp2.writePort(0, 0xCC); // alle LO, Gerade
   mcp2.writePort(1, 0x33); // alle LO, Gerade
 
@@ -534,7 +562,7 @@ void loop()
           sincelastweiche[2] = 0;
         }
       }
-      
+
       // Weiche 2 Position 1
       if ((weichentastencodeC & (1 << SET_A_B_BIT)) == 0) //  2    Taste B gedrueckt weiche2
       {
@@ -542,16 +570,15 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("C A_B");
-          mcp1.digitalWrite(2, LOW);          //
+          mcp1.digitalWrite(2, LOW);             //
           weichenposition[GRUPPE_0] |= (1 << 2); // bit fur weiche 2 setzen
           weichendata wC = {.weiche = 2, .richtung = 0};
           rb_push(&weichenringbuffer, wC);
           uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
           // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
           sincelastweiche[2] = 0;
-         }
+        }
       }
-      
 
       // Weiche 3 Position 0
       if ((weichentastencodeC & (1 << SET_A_C_BIT)) == 0) //     Taste 3 gedrueckt , weiche1
@@ -611,7 +638,7 @@ void loop()
           sincelastweiche[0] = 0;
         }
       }
-      
+
       // Weiche 0 Position 0
       if ((weichentastencodeD & (1 << SET_B_B_BIT)) == 0) // Taste  gedrueckt
       {
@@ -668,7 +695,6 @@ void loop()
 
     } // if(weichentastencodeD ^
 
-    
     // weichendata wE;                            // data in ringbuffer
     weichentastencodeE = mcp2.readPort(0); //& 0x7F;
 
@@ -683,7 +709,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_A");
-          mcp2.digitalWrite(2, HIGH);         //
+          mcp2.digitalWrite(2, HIGH);             //
           weichenposition[GRUPPE_0] &= ~(1 << 6); // bit fuer weiche loeschen
 
           weichendata wE = {.weiche = 6, .richtung = 1};
@@ -700,7 +726,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_B");
-          mcp2.digitalWrite(2, LOW);       //
+          mcp2.digitalWrite(2, LOW);             //
           weichenposition[GRUPPE_0] |= (1 << 6); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 6, .richtung = 0};
@@ -710,7 +736,7 @@ void loop()
           sincelastweiche[6] = 0;
         }
       }
-      
+
       // Weiche 7 Position 5
       if ((weichentastencodeE & (1 << SET_A_C_BIT)) == 0) // Taste 5 gedrueckt , weiche1
       {
@@ -718,7 +744,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_C");
-          mcp2.digitalWrite(2, HIGH);         // GPA7
+          mcp2.digitalWrite(2, HIGH);            // GPA7
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 7, .richtung = 1};
@@ -735,7 +761,7 @@ void loop()
         {
           u8g2.setCursor(8, 48);
           u8g2.print("E A_D");
-          mcp2.digitalWrite(2, LOW);          //
+          mcp2.digitalWrite(2, LOW);             //
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
           weichendata wE = {.weiche = 7, .richtung = 0};
@@ -745,7 +771,7 @@ void loop()
           sincelastweiche[7] = 0;
         }
       }
-      
+
       oldweichentastencodeE = weichentastencodeE;
     } // if(weichentastencodeDE ^
 
@@ -834,7 +860,7 @@ void loop()
         }
       }
       oldweichentastencodeF = weichentastencodeF;
-     
+
     } // if weichentastencodeF ^
      */
     u8g2.sendBuffer();
