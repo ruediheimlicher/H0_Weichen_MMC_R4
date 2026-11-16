@@ -84,8 +84,8 @@ elapsedMillis sincelastweiche[ANZWWEICHEN];
 #define SET_B_C_BIT 7 // 1
 #define SET_B_D_BIT 2 // 1
 
-MCP23S17 mcp2(&SPI, SPI_MCP_CS, 0); // A2=GND, A1=GND, A0=GND
-MCP23S17 mcp1(&SPI, SPI_MCP_CS, 2); // A2=GND, A1=GND, A0=VDD
+MCP23S17 mcp1(&SPI, SPI_MCP_CS, 0); // A2=GND, A1=GND, A0=GND
+MCP23S17 mcp2(&SPI, SPI_MCP_CS, 2); // A2=GND, A1=GND, A0=VDD
 
 uint16_t pusherror = 0;
 
