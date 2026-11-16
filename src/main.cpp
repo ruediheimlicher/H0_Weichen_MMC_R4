@@ -239,6 +239,8 @@ volatile uint8_t weichenbuffer[4] = {};
 
 H0_RingBuffer weichenringbuffer = {0};
 
+uint16_t weichetaskcounter = 0;
+
 const uint64_t pipeOut = 0xABCDABCD71LL; // NOTE: The address in the Transmitter and Receiver code must be the same "0xABCDABCD71LL" | Verici ve Alıcı kodundaki adres aynı olmalıdır
 
 extern "C"
@@ -256,6 +258,10 @@ uint8_t taskstatus = 0;
 uint8_t adresse = 0;
 uint16_t adressmatch = 0;
 uint16_t speed = 0;
+
+int16_t weichenwert = 0;
+
+uint16_t oldweichenwert = 0;
 
 Signal data;
 
@@ -330,16 +336,25 @@ void poptask(void)
   int erfolg = rb_pop(&weichenringbuffer, &w);
   if (erfolg == 0) // Weiche vorhanden
   {
-    u8g2.setCursor(64, 48);
-    u8g2.print(w.weiche);
-    u8g2.print(w.richtung);
+    if (DISPLAY)
+    {
+      u8g2.setCursor(64, 48);
+      u8g2.print(w.weiche);
+      u8g2.print(w.richtung);
+      u8g2.sendBuffer();
+    }
+
+    weichenwert = 400 * w.weiche;
+
   }
   else
   {
     u8g2.setCursor(64, 48);
     u8g2.print("X");
   }
-  u8g2.sendBuffer();
+  if (DISPLAY)
+  {
+  }
 }
 
 void setup()
@@ -455,13 +470,13 @@ void setup()
   oldweichentastencodeE = weichentastencodeE;
   oldweichentastencodeF = weichentastencodeF;
 
-Serial.println("MCP1");
-Serial.println(mcp1.readPort(0), HEX);
-Serial.println(mcp1.readPort(1), HEX);
+  Serial.println("MCP1");
+  Serial.println(mcp1.readPort(0), HEX);
+  Serial.println(mcp1.readPort(1), HEX);
 
-Serial.println("MCP2");
-Serial.println(mcp2.readPort(0), HEX);
-Serial.println(mcp2.readPort(1), HEX);
+  Serial.println("MCP2");
+  Serial.println(mcp2.readPort(0), HEX);
+  Serial.println(mcp2.readPort(1), HEX);
   /*
 //                Configure the NRF24 module  | NRF24 modül konfigürasyonu
   radio.begin();
@@ -517,27 +532,45 @@ void loop()
 
   if (adresse == 0)
   {
-    taskstatus &= ~(1 << MCP_START);
+
+    weichetaskcounter++;
+    if ((weichetaskcounter > 10) && (taskstatus & (1 << ADRESSE_START)))
+    {
+      taskstatus &= ~(1 << ADRESSE_START);
+      weichenwert = 0;
+      oldweichenwert = 0;
+      analogWrite(DAC, weichenwert);
+    }
+
   }
   if (adresse == 7) // Vorbereitung
   {
-    //
-    // analogWrite(DAC, speed);
-    // analogWrite(DAC,  2000);
+
+    
   }
+
   if (adresse == 6)
   {
-    if (!(taskstatus & (1 << ADRESSE_START)))
+
+    OSZIA_LO();
+
+    if (weichenwert != oldweichenwert)
     {
-      OSZIA_LO();
+      if (!(taskstatus & (1 << ADRESSE_START)))
+      {
+
+        taskstatus |= (1 << ADRESSE_START);
+        analogWrite(DAC, weichenwert);
+        oldweichenwert = weichenwert;
+        sinceweiche = 0;
+        weichetaskcounter = 0;
+      }
     }
-    taskstatus |= (1 << ADRESSE_START);
-    analogWrite(DAC, speed);
+
     digitalWrite(OUT_EN_PIN, 1);
     digitalWrite(ADRESS_EN_PIN, 1);
     adressmatch++;
     OSZIA_HI();
-    //}
   }
 
   if ((adresse == 7)) // & (taskstatus & (1 << ADRESSE_START)))
@@ -548,7 +581,7 @@ void loop()
     digitalWrite(ADRESS_EN_PIN, 0);
     // analogWrite(DAC, 0);
 
-    taskstatus &= ~(1 << ADRESSE_START);
+    //taskstatus &= ~(1 << ADRESSE_START);
   }
 
   if (adresse == 9)
@@ -574,6 +607,7 @@ void loop()
       {
         if (sincelastweiche[2] > 100)
         {
+
           u8g2.setCursor(8, 48);
           u8g2.print("C A_A");
           mcp1.digitalWrite(2, HIGH);
@@ -919,9 +953,10 @@ void loop()
       oldweichentastencodeF = weichentastencodeF;
 
     } // if weichentastencodeF ^
-
-    u8g2.sendBuffer();
-
+    if (DISPLAY)
+    {
+      u8g2.sendBuffer();
+    }
     if (rb_count(&weichenringbuffer))
     {
       poptask();
@@ -944,7 +979,7 @@ void loop()
     uint8_t charindex = loopcounter1 & 0x7F;
     // u8g2.setDrawColor(0);
 
-    // speed >>= 4;
+    speed >>= 4;
     // Serial.print("speed: ");
     // Serial.println(speed);
     // analogWrite(DAC, (speed));
@@ -966,14 +1001,15 @@ void loop()
         u8g2.setCursor(50, 30);
         u8g2.print(weichentastencodeF);
 
-        u8g2.setCursor(100, 12);
+        u8g2.setCursor(100, 48);
         u8g2.print(speed);
 
         u8g2.setCursor(90, 30);
         u8g2.print(pusherror);
+        u8g2.sendBuffer();
       }
 
-      blinkcounter += 255;
+      blinkcounter += 25;
       speed = blinkcounter & 0xFFF;
       if (blinkcounter > 4000)
       {
@@ -997,7 +1033,6 @@ void loop()
         // Serial.print((adresse >> b) & 1);
       }
       // Serial.println();
-      u8g2.sendBuffer();
     }
   } // if loopcounter
 }

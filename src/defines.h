@@ -11,7 +11,7 @@
 
 #define BLINKRATE 0x0FFF
 
-#define DISPLAY 1
+#define DISPLAY 0
 
 #define ADRESSE_START   1
 #define ADRESSE_END      2
