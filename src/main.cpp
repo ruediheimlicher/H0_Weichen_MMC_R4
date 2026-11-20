@@ -352,13 +352,13 @@ void poptask(void)
       u8g2.print(w.richtung);
       u8g2.sendBuffer();
     }
-    //OSZIB_LO();
+    OSZIB_LO();
     taskstatus |= (1 << ADRESSE_WAIT);
     weichenwert = 400 * w.weiche;
     weichenwert = potwerte[w.weiche];
     weichenrichtung = w.richtung;
     rb_clear(&weichenringbuffer);
-    //OSZIB_HI();
+    OSZIB_HI();
   }
   else
   {
@@ -581,6 +581,10 @@ void loop()
         sinceweiche = 0;
         weichetaskcounter = 0;
         digitalWrite(ADRESS4_EN_PIN, 0); // Aresse 4 open während impuls
+        
+        //      pinMode(ADRESS4_EN_PIN, INPUT); // float
+
+        OSZIB_LO();
         pinMode(FUNKTION_PIN, OUTPUT);   // Aktiv während impuls, sonst floating
         if (weichenrichtung)
         {
@@ -590,6 +594,7 @@ void loop()
         {
           digitalWrite(FUNKTION_PIN, 0);
         }
+        OSZIB_HI();
       }
     }
     else
@@ -617,12 +622,13 @@ void loop()
     // **
     // analogWrite(DAC, 0);
 
-    digitalWrite(ADRESS4_EN_PIN, 1);
+    //digitalWrite(ADRESS4_EN_PIN, 1);
     //OSZIB_HI();
   }
 
   if (adresse == 9) // Weichen lesen
   {
+    pinMode(ADRESS4_EN_PIN, OUTPUT); // float
     //OSZIA_LO();
     if (!(taskstatus & (1 << MCP_START)))
     {
@@ -839,7 +845,7 @@ void loop()
             u8g2.print("E A_A");
           }
           //digitalWrite(ADRESS4_EN_PIN, 0);
-          OSZIB_LO();
+          //OSZIB_LO();
           mcp2.digitalWrite(2, HIGH);             //
           weichenposition[GRUPPE_0] &= ~(1 << 6); // bit fuer weiche loeschen
 
@@ -1053,14 +1059,16 @@ void loop()
     {
        poptask(); // 3 us
     }
+    digitalWrite(ADRESS4_EN_PIN, 1);
+
     //OSZIA_HI();
   } // adresse == 9
-  /*
+  
     if (adresse > 9)
     {
 
     }
-  */
+  
   loopcounter0++;
 
   if (loopcounter0 >= BLINKRATE)
