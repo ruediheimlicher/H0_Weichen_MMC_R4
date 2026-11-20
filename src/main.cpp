@@ -338,7 +338,7 @@ void poptask(void)
   int erfolg = rb_pop(&weichenringbuffer, &w);
   if (erfolg == 0) // Weiche vorhanden
   {
-    //OSZIB_LO();
+    // OSZIB_LO();
     if (DISPLAY)
     {
       u8g2.setCursor(64, 48);
@@ -352,7 +352,7 @@ void poptask(void)
     weichenwert = 400 * w.weiche;
     weichenwert = potwerte[w.weiche];
     weichenrichtung = w.richtung;
-    //OSZIB_HI();
+    // OSZIB_HI();
   }
   else
   {
@@ -552,7 +552,7 @@ void loop()
       digitalWrite(ADRESS4_EN_PIN, 0);
 
       // ***
-      //digitalWrite(FUNKTION_PIN, 0);
+      // digitalWrite(FUNKTION_PIN, 0);
     }
     // OSZIA_HI();
   }
@@ -569,7 +569,7 @@ void loop()
       taskstatus &= ~(1 << ADRESSE_WAIT);
       if (!(taskstatus & (1 << ADRESSE_RUN)))
       {
-         OSZIA_LO();
+        OSZIA_LO();
 
         taskstatus |= (1 << ADRESSE_RUN);
         analogWrite(DAC, weichenwert);
@@ -592,7 +592,7 @@ void loop()
     else // keine Weichentaste
     {
       // OSZIB_LO();
-       digitalWrite(ADRESS4_EN_PIN, 1);
+      digitalWrite(ADRESS4_EN_PIN, 1);
     }
 
     digitalWrite(ADRESS_EN_PIN, 1); // Adresse 1-3 ON
@@ -600,31 +600,19 @@ void loop()
     adressmatch++;
   }
 
-  if ((adresse == 7)) // & (taskstatus & (1 << ADRESSE_START)))
+  if ((adresse == 7)) // reset
   {
 
     paketcounter++;
-    // digitalWrite(OUT_EN_PIN, 0);
     digitalWrite(ADRESS_EN_PIN, 0); // OUT und Adressen
-// ***
     digitalWrite(ADRESS4_EN_PIN, 0);
-    
 
+    digitalWrite(FUNKTION_PIN, 0);
 
-    // OSZIB_HI();
-
-    // **
-    //pinMode(FUNKTION_PIN, INPUT); // float
-    // **
-    // analogWrite(DAC, 0);
-
-    //digitalWrite(ADRESS4_EN_PIN, 0);
   }
 
   if (adresse == 9) // Weichen lesen
   {
-    digitalWrite(ADRESS4_EN_PIN, 0);
-    //OSZIA_LO();
     if (!(taskstatus & (1 << MCP_START)))
     {
       taskstatus |= (1 << MCP_START);
@@ -1051,7 +1039,7 @@ void loop()
     {
       poptask();
     }
-    //OSZIA_HI();
+    // OSZIA_HI();
   } // adresse == 9
 
   if (adresse > 9)
