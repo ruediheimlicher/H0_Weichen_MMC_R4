@@ -9,12 +9,16 @@
 #ifndef DEFINES_h
 #define DEFINES_h
 
+
 #define BLINKRATE 0x0FFF
 
 #define DISPLAY 0
 
-#define ADRESSE_START   1
+#define ADRESSE_RUN   1
 #define ADRESSE_END      2
+
+#define ADRESSE_WAIT   4
+
 #define MCP_START       3
 
 #define HOMESCREEN      0
@@ -38,6 +42,8 @@
 
 #define arrow_width 16
 #define arrow_height 16
+
+
 /*
 static unsigned char pfeil_l[] = {
    0b1,
