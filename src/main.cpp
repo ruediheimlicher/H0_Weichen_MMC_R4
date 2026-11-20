@@ -95,6 +95,9 @@ uint8_t regB = 0;
 #define ANZWEICHENGRUPPEN 1
 #define GRUPPE_0 0
 #define GRUPPE_1 1
+
+const uint16_t potwerte[] = {552, 824, 1121, 1419, 1665, 1920, 2209, 2464, 2795, 3059, 3280, 3569, 3841, 4096};
+
 uint8_t weichenaddressarray[2][4] = {{2, 2, 2, 1}, {2, 2, 1, 1}};
 uint8_t weichenposition[2] = {}; // 0: gerade 1: ablenkung
 
@@ -188,7 +191,7 @@ uint8_t weichenxor3 = 0;
 uint8_t weichenxor4 = 0;
 
 uint8_t weichennummer = 0; // 0..7
-uint8_t weichenrichtung = 0;
+// uint8_t weichenrichtung = 0;
 
 uint8_t tastenstatusA = 0;
 uint8_t tastenstatusB = 0;
@@ -260,6 +263,7 @@ uint16_t adressmatch = 0;
 uint16_t speed = 0;
 
 int16_t weichenwert = 0;
+uint8_t weichenrichtung = 0;
 
 uint16_t oldweichenwert = 0;
 
@@ -270,18 +274,16 @@ Signal data;
 #define CE_PIN 9
 #define CSN_PIN 10
 
-#define ADRESS_EN_PIN D2 // Adresse auf Bus geben
-#define OUT_EN_PIN A2
-
-#define OUT_PIN A0
+#define ADRESS_EN_PIN D2  // Adresse 1-3 auf Bus geben
+#define ADRESS4_EN_PIN A2 // Adresse 4 auf Bus geben: ON/OPEN
+#define FUNKTION_PIN A3   // Funktion-Ausgang
+#define OUT_PIN A0        // DAC
 
 #define OSZIA_PIN A6
 #define OSZIB_PIN A7
 
 // instantiate an object for the nRF24L01 transceiver
 RF24 radio(CE_PIN, CSN_PIN);
-
-#define LOOPLED A1
 
 unsigned char char_x = 0;
 unsigned char char_y = 0;
@@ -336,16 +338,21 @@ void poptask(void)
   int erfolg = rb_pop(&weichenringbuffer, &w);
   if (erfolg == 0) // Weiche vorhanden
   {
+    //OSZIB_LO();
     if (DISPLAY)
     {
       u8g2.setCursor(64, 48);
       u8g2.print(w.weiche);
+      u8g2.setCursor(80, 48);
       u8g2.print(w.richtung);
       u8g2.sendBuffer();
     }
 
+    taskstatus |= (1 << ADRESSE_WAIT);
     weichenwert = 400 * w.weiche;
-
+    weichenwert = potwerte[w.weiche];
+    weichenrichtung = w.richtung;
+    //OSZIB_HI();
   }
   else
   {
@@ -360,6 +367,7 @@ void poptask(void)
 void setup()
 {
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(OSZIA_PIN, OUTPUT);
   pinMode(OSZIB_PIN, OUTPUT);
 
@@ -368,11 +376,12 @@ void setup()
   pinMode(ADRESS_EN_PIN, OUTPUT); // Enable Adress-wert
   digitalWrite(ADRESS_EN_PIN, 0); // OFF
 
-  pinMode(OUT_EN_PIN, OUTPUT); // Enable ADC-wert
-  digitalWrite(OUT_EN_PIN, 0); // OFF
+  pinMode(ADRESS4_EN_PIN, OUTPUT); // Enable ADC-wert
+  digitalWrite(ADRESS4_EN_PIN, 0); // OFF
 
-  pinMode(LOOPLED, OUTPUT);
-  // pinMode(OUT_PIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  // pinMode(LOOPLED, OUTPUT);
+  //  pinMode(OUT_PIN, OUTPUT);
   analogWriteResolution(12);
   initDisplay();
   setHomeScreen();
@@ -530,62 +539,92 @@ void loop()
   adresse |= ((pins >> 2) & 1) << 2; // D5
   adresse |= ((pins >> 6) & 1) << 3; // D6
 
-  if (adresse == 0)
+  if (adresse == 0) // neues Paket
   {
-
+    // OSZIA_LO();
     weichetaskcounter++;
-    if ((weichetaskcounter > 10) && (taskstatus & (1 << ADRESSE_START)))
+    if ((weichetaskcounter > 10) && (taskstatus & (1 << ADRESSE_RUN)))
     {
-      taskstatus &= ~(1 << ADRESSE_START);
+      taskstatus &= ~(1 << ADRESSE_RUN);
       weichenwert = 0;
       oldweichenwert = 0;
       analogWrite(DAC, weichenwert);
-    }
+      digitalWrite(ADRESS4_EN_PIN, 0);
 
+      // ***
+      //digitalWrite(FUNKTION_PIN, 0);
+    }
+    // OSZIA_HI();
   }
   if (adresse == 7) // Vorbereitung
   {
-
-    
   }
 
   if (adresse == 6)
   {
-
-    OSZIA_LO();
-
-    if (weichenwert != oldweichenwert)
+    //
+    // OSZIA_LO();
+    if (taskstatus & (1 << ADRESSE_WAIT))
     {
-      if (!(taskstatus & (1 << ADRESSE_START)))
+      taskstatus &= ~(1 << ADRESSE_WAIT);
+      if (!(taskstatus & (1 << ADRESSE_RUN)))
       {
+         OSZIA_LO();
 
-        taskstatus |= (1 << ADRESSE_START);
+        taskstatus |= (1 << ADRESSE_RUN);
         analogWrite(DAC, weichenwert);
         oldweichenwert = weichenwert;
         sinceweiche = 0;
         weichetaskcounter = 0;
+        digitalWrite(ADRESS4_EN_PIN, 0); // Adresse 4 LO während impuls
+        pinMode(FUNKTION_PIN, OUTPUT);   // Aktiv während impuls, sonst floating
+        if (weichenrichtung)
+        {
+          digitalWrite(FUNKTION_PIN, 1);
+        }
+        else
+        {
+          digitalWrite(FUNKTION_PIN, 0);
+        }
+        OSZIA_HI();
       }
     }
+    else // keine Weichentaste
+    {
+      // OSZIB_LO();
+       digitalWrite(ADRESS4_EN_PIN, 1);
+    }
 
-    digitalWrite(OUT_EN_PIN, 1);
-    digitalWrite(ADRESS_EN_PIN, 1);
+    digitalWrite(ADRESS_EN_PIN, 1); // Adresse 1-3 ON
+
     adressmatch++;
-    OSZIA_HI();
   }
 
   if ((adresse == 7)) // & (taskstatus & (1 << ADRESSE_START)))
   {
 
     paketcounter++;
-    digitalWrite(OUT_EN_PIN, 0);
-    digitalWrite(ADRESS_EN_PIN, 0);
+    // digitalWrite(OUT_EN_PIN, 0);
+    digitalWrite(ADRESS_EN_PIN, 0); // OUT und Adressen
+// ***
+    digitalWrite(ADRESS4_EN_PIN, 0);
+    
+
+
+    // OSZIB_HI();
+
+    // **
+    //pinMode(FUNKTION_PIN, INPUT); // float
+    // **
     // analogWrite(DAC, 0);
 
-    //taskstatus &= ~(1 << ADRESSE_START);
+    //digitalWrite(ADRESS4_EN_PIN, 0);
   }
 
-  if (adresse == 9)
+  if (adresse == 9) // Weichen lesen
   {
+    digitalWrite(ADRESS4_EN_PIN, 0);
+    //OSZIA_LO();
     if (!(taskstatus & (1 << MCP_START)))
     {
       taskstatus |= (1 << MCP_START);
@@ -607,9 +646,11 @@ void loop()
       {
         if (sincelastweiche[2] > 100)
         {
-
-          u8g2.setCursor(8, 48);
-          u8g2.print("C A_A");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("C A_A");
+          }
           mcp1.digitalWrite(2, HIGH);
           weichenposition[GRUPPE_0] &= ~(1 << 2); // bit fuer weiche 2 loeschen
 
@@ -626,8 +667,11 @@ void loop()
       {
         if (sincelastweiche[2] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("C A_B");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("C A_B");
+          }
           mcp1.digitalWrite(2, LOW);             //
           weichenposition[GRUPPE_0] |= (1 << 2); // bit fur weiche 2 setzen
 
@@ -644,8 +688,12 @@ void loop()
       {
         if (sincelastweiche[3] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("C A_C");
+          OSZIB_LO();
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("C A_C");
+          }
           mcp1.digitalWrite(3, HIGH);
           weichenposition[GRUPPE_0] &= ~(1 << 3);
 
@@ -654,6 +702,7 @@ void loop()
           uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
           // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
           sincelastweiche[3] = 0;
+          OSZIB_HI();
         }
       }
 
@@ -662,8 +711,14 @@ void loop()
       {
         if (sincelastweiche[3] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("C A_D");
+          OSZIB_LO();
+          if (DISPLAY)
+          {
+
+            u8g2.setCursor(8, 48);
+            u8g2.print("C A_D");
+          }
+
           mcp1.digitalWrite(3, LOW);
           weichenposition[GRUPPE_0] |= (1 << 3);
           weichendata wC = {.weiche = 3, .richtung = 0};
@@ -671,6 +726,7 @@ void loop()
           uint8_t eepromdata = (wC.weiche << 4) | wC.richtung;
           // EEPROM.update(EEPROM_WEICHESTART + wC.weiche,(eepromdata));
           sincelastweiche[3] = 0;
+          OSZIB_HI();
         }
       }
       oldweichentastencodeC = weichentastencodeC;
@@ -687,8 +743,11 @@ void loop()
       {
         if (sincelastweiche[0] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("D B_A");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("D B_A");
+          }
           mcp1.digitalWrite(13, HIGH);
           weichenposition[GRUPPE_0] &= ~(1 << 0); // bit fuer weiche loeschen
           weichendata wD = {.weiche = 0, .richtung = 1};
@@ -708,8 +767,11 @@ void loop()
       {
         if (sincelastweiche[0] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("D B_B");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("D B_B");
+          }
           mcp1.digitalWrite(13, LOW);
           weichenposition[GRUPPE_0] |= (1 << 0); // bit fur weiche setzen
           weichendata wD = {.weiche = 0, .richtung = 0};
@@ -725,8 +787,11 @@ void loop()
       {
         if (sincelastweiche[1] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("D B_C");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("D B_C");
+          }
           mcp1.digitalWrite(12, HIGH);
           weichenposition[GRUPPE_0] &= ~(1 << 1); // bit fuer weiche loeschen
           weichendata wD = {.weiche = 1, .richtung = 1};
@@ -742,8 +807,11 @@ void loop()
       {
         if (sincelastweiche[1] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("D B_D");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("D B_D");
+          }
           mcp1.digitalWrite(12, LOW);
           weichenposition[GRUPPE_0] |= (1 << 1); // bit fur weiche setzen
           weichendata wD = {.weiche = 1, .richtung = 0};
@@ -770,8 +838,11 @@ void loop()
       {
         if (sincelastweiche[6] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("E A_A");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("E A_A");
+          }
           mcp2.digitalWrite(2, HIGH);             //
           weichenposition[GRUPPE_0] &= ~(1 << 6); // bit fuer weiche loeschen
 
@@ -793,8 +864,11 @@ void loop()
       {
         if (sincelastweiche[6] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("E A_B");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("E A_B");
+          }
           mcp2.digitalWrite(2, LOW);             //
           weichenposition[GRUPPE_0] |= (1 << 6); // bit fur weiche setzen
 
@@ -815,8 +889,11 @@ void loop()
       {
         if (sincelastweiche[7] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("E A_C");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("E A_C");
+          }
           mcp2.digitalWrite(3, HIGH);             // GPA7
           weichenposition[GRUPPE_0] &= ~(1 << 7); // bit fur weiche setzen
 
@@ -837,8 +914,11 @@ void loop()
       {
         if (sincelastweiche[7] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("E A_D");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("E A_D");
+          }
           mcp2.digitalWrite(3, LOW);             //
           weichenposition[GRUPPE_0] |= (1 << 7); // bit fur weiche setzen
 
@@ -868,8 +948,11 @@ void loop()
       {
         if (sincelastweiche[4] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("F B_A");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("F B_A");
+          }
           mcp2.digitalWrite(13, HIGH);
           weichenposition[GRUPPE_0] &= ~(1 << 4); // bit fur weiche setzen
 
@@ -889,8 +972,11 @@ void loop()
       {
         if (sincelastweiche[4] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("F B_B");
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("F B_B");
+          }
           mcp2.digitalWrite(13, LOW);
           weichenposition[GRUPPE_0] |= (1 << 4); // bit fur weiche setzen
 
@@ -912,9 +998,11 @@ void loop()
       {
         if (sincelastweiche[5] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("F B_C");
-
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("F B_C");
+          }
           mcp2.digitalWrite(12, HIGH);
           weichenposition[GRUPPE_0] &= ~(1 << 5);
           weichendata wF = {.weiche = 5, .richtung = 1};
@@ -933,11 +1021,13 @@ void loop()
       {
         if (sincelastweiche[5] > 100)
         {
-          u8g2.setCursor(8, 48);
-          u8g2.print("F B_D");
-          mcp2.digitalWrite(12, LOW);
-          weichenposition[GRUPPE_0] |= (1 << 5);
-
+          if (DISPLAY)
+          {
+            u8g2.setCursor(8, 48);
+            u8g2.print("F B_D");
+            mcp2.digitalWrite(12, LOW);
+            weichenposition[GRUPPE_0] |= (1 << 5);
+          }
           weichendata wF = {.weiche = 5, .richtung = 0};
           uint8_t result = rb_push(&weichenringbuffer, wF);
           if (result == 0)
@@ -961,8 +1051,12 @@ void loop()
     {
       poptask();
     }
+    //OSZIA_HI();
+  } // adresse == 9
 
-  } // adresse == 0
+  if (adresse > 9)
+  {
+  }
 
   loopcounter0++;
 
@@ -1025,10 +1119,10 @@ void loop()
 
       // Serial.print("\t");
       loopcounter1 = 0;
-
-      digitalWrite(LOOPLED, !digitalRead(LOOPLED));
-      // Serial.print("Byte-Wert: ");
-      // for (int b = 7; b >= 0; b--)
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      // digitalWrite(LOOPLED, !digitalRead(LOOPLED));
+      //  Serial.print("Byte-Wert: ");
+      //  for (int b = 7; b >= 0; b--)
       {
         // Serial.print((adresse >> b) & 1);
       }
