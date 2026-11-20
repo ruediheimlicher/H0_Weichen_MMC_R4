@@ -534,9 +534,9 @@ void loop()
   {
 
     weichetaskcounter++;
-    if ((weichetaskcounter > 10) && (taskstatus & (1 << ADRESSE_START)))
+    if ((weichetaskcounter > 10) && (taskstatus & (1 << ADRESSE_WAIT)))
     {
-      taskstatus &= ~(1 << ADRESSE_START);
+      taskstatus &= ~(1 << ADRESSE_WAIT);
       weichenwert = 0;
       oldweichenwert = 0;
       analogWrite(DAC, weichenwert);
@@ -552,14 +552,14 @@ void loop()
   if (adresse == 6)
   {
 
-    OSZIA_LO();
+    
 
     if (weichenwert != oldweichenwert)
     {
-      if (!(taskstatus & (1 << ADRESSE_START)))
+      if (!(taskstatus & (1 << ADRESSE_WAIT)))
       {
-
-        taskstatus |= (1 << ADRESSE_START);
+        OSZIA_LO();
+        taskstatus |= (1 << ADRESSE_WAIT);
         analogWrite(DAC, weichenwert);
         oldweichenwert = weichenwert;
         sinceweiche = 0;
@@ -568,12 +568,12 @@ void loop()
     }
 
     digitalWrite(OUT_EN_PIN, 1);
-    digitalWrite(ADRESS_EN_PIN, 1);
+    digitalWrite(ADRESS_EN_PIN, 0);
     adressmatch++;
     OSZIA_HI();
   }
 
-  if ((adresse == 7)) // & (taskstatus & (1 << ADRESSE_START)))
+  if ((adresse == 7)) // & (taskstatus & (1 << ADRESSE_WAIT)))
   {
 
     paketcounter++;
@@ -581,7 +581,7 @@ void loop()
     digitalWrite(ADRESS_EN_PIN, 0);
     // analogWrite(DAC, 0);
 
-    //taskstatus &= ~(1 << ADRESSE_START);
+    //taskstatus &= ~(1 << ADRESSE_WAIT);
   }
 
   if (adresse == 9)
